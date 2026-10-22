@@ -10,53 +10,16 @@
     storedKey,
     storeKey,
     forgetKey,
+    formatDate,
     formatTime,
     relativeTime,
     lag,
   } from '$lib/api.js';
+  import { ICONS } from '$lib/icons.js';
   import { nextTheme, setTheme } from '$lib/theme.js';
 
-  // Static icon markup from the Kioku Sakura & Obsidian design system.
-  const ICONS = {
-    sun: '<svg class="theme-icon-rotate" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>',
-    moon: '<svg class="theme-icon-rotate" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>',
-    logout:
-      '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>',
-    refresh:
-      '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>',
-    copy: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>',
-    eye: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>',
-    eyeOff:
-      '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>',
-    manga:
-      '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>',
-    chapters:
-      '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>',
-    categories:
-      '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>',
-    history:
-      '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>',
-    preferences:
-      '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>',
-    devices:
-      '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>',
-    stores:
-      '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>',
-    tracks:
-      '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>',
-    sources:
-      '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>',
-    github:
-      '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>',
-    check:
-      '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>',
-    error:
-      '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>',
-    info: '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>',
-  };
-
-  // How each synced record type is presented. Only types the server actually
-  // reports get a card, so the grid never shows an invented zero.
+  // How each synced record type is presented. A type the server reports that
+  // this table does not know yet still gets a card, under a generated label.
   const TYPE_META = {
     manga: { title: 'Manga', desc: 'Entries in the synced library', accent: 'icon-manga', icon: 'manga' },
     chapter: { title: 'Chapters', desc: 'Read, bookmark & page progress', accent: 'icon-chapters', icon: 'chapters' },
@@ -69,16 +32,32 @@
     source_name: { title: 'Sources', desc: 'Source names & languages', accent: 'icon-source-names', icon: 'sources' },
   };
 
+  const FALLBACK_ACCENTS = ['icon-preferences', 'icon-tracks', 'icon-source-names', 'icon-extension-stores'];
+  const FALLBACK_ICONS = ['preferences', 'tracks', 'sources', 'stores'];
+
+  function typeMeta(type, index) {
+    const known = TYPE_META[type];
+    if (known) return known;
+    const words = type.replace(/_/g, ' ');
+    return {
+      title: words.replace(/^./, (c) => c.toUpperCase()),
+      desc: 'Records of this type',
+      accent: FALLBACK_ACCENTS[index % FALLBACK_ACCENTS.length],
+      icon: FALLBACK_ICONS[index % FALLBACK_ICONS.length],
+    };
+  }
+
   function buildStats(library) {
     if (!library) return [];
-    const cards = [];
-    for (const [type, meta] of Object.entries(TYPE_META)) {
-      const record = (library.records ?? []).find((r) => r.type === type);
-      if (!record) continue;
+    const cards = (library.records ?? []).map((record, index) => {
+      const meta = typeMeta(record.type, index);
       const live = Math.max(0, record.count - record.tombstone);
-      const desc = record.tombstone > 0 ? `${meta.desc} · ${record.tombstone} deleted` : meta.desc;
-      cards.push({ ...meta, value: live, desc });
-    }
+      return {
+        ...meta,
+        value: live,
+        desc: record.tombstone > 0 ? `${meta.desc} · ${record.tombstone} deleted` : meta.desc,
+      };
+    });
     const online = library.online ?? 0;
     cards.push({
       title: 'Devices',
@@ -115,6 +94,7 @@
 
   const statusClass = $derived(health ? 'online' : healthChecked ? 'error' : '');
   const statusLabel = $derived(health ? `protocol ${health.protocol}` : healthChecked ? 'offline' : 'checking…');
+  const statusTitle = $derived(health ? `Server reachable, sync protocol ${health.protocol}` : healthChecked ? 'Server unreachable' : 'Checking the server…');
 
   // This is deliberately plain (non-reactive) state: it guarantees that
   // effects, focus events, and interval ticks can never overlap requests.
@@ -122,6 +102,8 @@
 
   function load() {
     if (!key) return Promise.resolve();
+    // A hidden tab has nobody watching; the next visibility change reloads.
+    if (typeof document !== 'undefined' && document.hidden) return Promise.resolve();
     if (loadInFlight) return loadInFlight;
 
     refreshing = true;
@@ -240,14 +222,19 @@
       checkHealth();
       load();
     }, 30000);
-    const onFocus = () => {
-      checkHealth();
-      load();
+    // Catch up immediately when the tab comes back, since polling paused.
+    const onVisible = () => {
+      if (!document.hidden) {
+        checkHealth();
+        load();
+      }
     };
-    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
     return () => {
       clearInterval(interval);
-      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
     };
   });
 </script>
@@ -275,7 +262,7 @@
       <span class="brand-title">kioku-sync</span>
     </div>
     <div class="nav-actions">
-      <div class="server-status-pill {statusClass}" title="Server status">
+      <div class="server-status-pill {statusClass}" title={statusTitle}>
         <span class="status-dot"></span>
         <span class="status-label">{statusLabel}</span>
       </div>
@@ -284,10 +271,10 @@
         <span class="theme-icon-moon">{@html ICONS.moon}</span>
         <span class="theme-toggle-label">theme</span>
       </button>
-      {#if key && library}
-        <button class="btn btn-secondary btn-sm" onclick={signOut}>
+      {#if key}
+        <button class="btn btn-secondary btn-sm" onclick={signOut} title="Sign out" aria-label="Sign out">
           {@html ICONS.logout}
-          <span>Sign out</span>
+          <span class="btn-label">Sign out</span>
         </button>
       {/if}
     </div>
@@ -353,9 +340,12 @@
         <div class="spinner-large"></div>
         <p class="text-muted mt-4 font-mono text-sm">Connecting to sync server…</p>
         {#if error}
-          <div class="alert-banner alert-error mt-4" style="display:flex; gap:0.75rem; align-items:center;">
+          <div class="alert-banner alert-error mt-4 alert-row">
             <span>{error}</span>
-            <button class="btn btn-secondary btn-sm" onclick={() => load()}>Try again</button>
+            <span class="alert-actions">
+              <button class="btn btn-secondary btn-sm" onclick={() => load()}>Try again</button>
+              <button class="btn btn-secondary btn-sm" onclick={signOut}>Sign out</button>
+            </span>
           </div>
         {/if}
       </section>
@@ -363,9 +353,12 @@
       <section class="view-panel dashboard-panel">
         <div class="dashboard-header-card motion-fade-up">
           <div class="header-main-info">
-            <div class="account-badge">
-              <span class="badge-dot"></span>
-              <span>Library active</span>
+            <div class="header-title">
+              <h2 class="library-title">{library.label}</h2>
+              <div class="account-badge">
+                <span class="badge-dot"></span>
+                <span>Library active</span>
+              </div>
             </div>
             <div class="account-key-meta">
               <span class="meta-label font-mono">KEY:</span>
@@ -379,11 +372,13 @@
                 {@html ICONS.copy}
               </button>
             </div>
-            <div class="account-date-meta font-mono">Created: {formatTime(library.created_at)}</div>
+            <div class="account-date-meta font-mono" title={formatTime(library.created_at)}>
+              Created: {formatDate(library.created_at)}
+            </div>
           </div>
           <div class="header-side-actions">
-            <div class="rev-badge">
-              <span class="rev-value font-mono tabular-nums">{library.last_seq}</span>
+            <div class="rev-badge" title="Position in this library's event log">
+              <span class="rev-value font-mono tabular-nums">{library.last_seq.toLocaleString()}</span>
               <span class="rev-label font-mono">SEQUENCE</span>
             </div>
             <button
@@ -399,9 +394,11 @@
         </div>
 
         {#if error}
-          <div class="alert-banner alert-error" style="display:flex; gap:0.75rem; align-items:center;">
+          <div class="alert-banner alert-error alert-row">
             <span>{error}</span>
-            <button class="btn btn-secondary btn-sm" onclick={() => load()}>Retry</button>
+            <span class="alert-actions">
+              <button class="btn btn-secondary btn-sm" onclick={() => load()}>Retry</button>
+            </span>
           </div>
         {/if}
 
@@ -410,8 +407,10 @@
             <div class="stat-card motion-card-in {i % 3 === 0 ? '' : i % 3 === 1 ? 'motion-delay-1' : 'motion-delay-2'}">
               <div class="stat-icon-wrapper {card.accent}">{@html ICONS[card.icon]}</div>
               <div class="stat-content">
-                <span class="stat-value font-mono tabular-nums">{card.value}</span>
-                <span class="stat-title">{card.title}</span>
+                <span class="stat-line">
+                  <span class="stat-value font-mono tabular-nums">{card.value.toLocaleString()}</span>
+                  <span class="stat-title">{card.title}</span>
+                </span>
                 <span class="stat-desc">{card.desc}</span>
               </div>
             </div>
@@ -499,7 +498,7 @@
                 {/if}
               </div>
               {#if pairingError}
-                <span class="text-xs" style="color: var(--destructive);">{pairingError}</span>
+                <span class="text-xs text-danger">{pairingError}</span>
               {:else}
                 <span class="text-muted text-xs text-center font-mono">Server URL &bull; API key</span>
               {/if}
@@ -507,81 +506,87 @@
           </div>
         </div>
 
-        <div class="dashboard-section motion-fade-up motion-delay-2">
-          <div class="section-header">
-            <h3>Devices</h3>
-            <p class="text-secondary">
-              {devices.length === 1 ? '1 device is paired with this library' : `${devices.length} devices are paired with this library`}
-            </p>
-          </div>
+        <div class="panels-grid">
+          <div class="dashboard-section motion-fade-up motion-delay-2">
+            <div class="section-header">
+              <h3>Devices</h3>
+              <p class="text-secondary">
+                {devices.length === 1 ? '1 device is paired with this library' : `${devices.length} devices are paired with this library`}
+              </p>
+            </div>
 
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Device</th>
-                  <th>App</th>
-                  <th>Last seen</th>
-                  <th class="numeric">Position</th>
-                  <th class="numeric">Lag</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {#each devices as device (device.id)}
+            <div class="table-wrap">
+              <table aria-label="Devices paired with this library">
+                <thead>
                   <tr>
-                    <td>
-                      <span class="cell-strong">{device.name}</span>
-                      <span class="cell-detail font-mono">{device.id.length > 14 ? device.id.slice(0, 12) + '…' : device.id}</span>
-                    </td>
-                    <td class="cell-mono cell-muted">{device.app_version}</td>
-                    <td class="cell-muted" title={formatTime(device.last_seen)}>{relativeTime(device.last_seen)}</td>
-                    <td class="numeric cell-mono">{device.last_seq}</td>
-                    <td class="numeric cell-mono">{lag(library, device)}</td>
-                    <td>
-                      <span class="status-cell {device.online ? 'online' : ''}">
-                        <span class="status-dot"></span>
-                        <span>{device.online ? 'online' : 'offline'}</span>
-                      </span>
-                    </td>
+                    <th scope="col">Device</th>
+                    <th scope="col">Last seen</th>
+                    <th scope="col" class="numeric">Lag</th>
+                    <th scope="col">Status</th>
                   </tr>
-                {:else}
-                  <tr><td class="empty-cell" colspan="6">No device has synced with this library yet.</td></tr>
-                {/each}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {#each devices as device (device.id)}
+                    <tr>
+                      <td>
+                        <span class="cell-strong">{device.name}</span>
+                        <span class="cell-detail font-mono">
+                          {device.app_version} &bull; pos {device.last_seq.toLocaleString()}
+                        </span>
+                      </td>
+                      <td class="cell-muted">
+                        <time datetime={isoTime(device.last_seen)} title={formatTime(device.last_seen)}>
+                          {relativeTime(device.last_seen)}
+                        </time>
+                      </td>
+                      <td class="numeric cell-mono" title="Events this device has not seen yet">{lag(library, device)}</td>
+                      <td>
+                        <span class="status-cell {device.online ? 'online' : ''}">
+                          <span class="status-dot"></span>
+                          <span>{device.online ? 'online' : 'offline'}</span>
+                        </span>
+                      </td>
+                    </tr>
+                  {:else}
+                    <tr><td class="empty-cell" colspan="4">No device has synced with this library yet.</td></tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
 
-        <div class="dashboard-section motion-fade-up motion-delay-3">
-          <div class="section-header">
-            <h3>Recent changes</h3>
-            <p class="text-secondary">Newest events in this library's log</p>
-          </div>
+          <div class="dashboard-section motion-fade-up motion-delay-3">
+            <div class="section-header">
+              <h3>Recent changes</h3>
+              <p class="text-secondary">Newest {events.length} events in this library's log</p>
+            </div>
 
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th class="numeric">Seq</th>
-                  <th>Type</th>
-                  <th>Change</th>
-                  <th>When</th>
-                </tr>
-              </thead>
-              <tbody>
-                {#each events as event (event.seq)}
+            <div class="table-wrap table-scroll">
+              <table aria-label="Newest events in this library's log">
+                <thead>
                   <tr>
-                    <td class="numeric cell-mono cell-muted">{event.seq}</td>
-                    <td><span class="type-tag">{event.type.replace('_', ' ')}</span></td>
-                    <td class="cell-strong">{event.summary}</td>
-                    <td class="cell-muted" title={formatTime(event.at)}>{relativeTime(event.at)}</td>
+                    <th scope="col" class="numeric">Seq</th>
+                    <th scope="col">Type</th>
+                    <th scope="col">Change</th>
+                    <th scope="col">When</th>
                   </tr>
-                {:else}
-                  <tr><td class="empty-cell" colspan="4">Nothing has changed on this library yet.</td></tr>
-                {/each}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {#each events as event (event.seq)}
+                    <tr>
+                      <td class="numeric cell-mono cell-muted">{event.seq.toLocaleString()}</td>
+                      <td><span class="type-tag">{event.type.replace(/_/g, ' ')}</span></td>
+                      <td class="cell-strong cell-clamp" title={event.summary}>{event.summary}</td>
+                      <td class="cell-muted">
+                        <time datetime={isoTime(event.at)} title={formatTime(event.at)}>{relativeTime(event.at)}</time>
+                      </td>
+                    </tr>
+                  {:else}
+                    <tr><td class="empty-cell" colspan="4">Nothing has changed on this library yet.</td></tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </section>

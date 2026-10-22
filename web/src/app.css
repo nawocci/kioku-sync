@@ -732,7 +732,7 @@ input[readonly] {
 /* Metric Cards Grid */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   gap: 1rem;
 }
 
@@ -743,7 +743,7 @@ input[readonly] {
   background-color: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  padding: 1.25rem;
+  padding: 0.85rem 1rem;
   box-shadow: var(--shadow-elevated);
   transition: transform 200ms var(--motion-ease), border-color 200ms var(--motion-ease), box-shadow 200ms var(--motion-ease);
 }
@@ -758,8 +758,8 @@ input[readonly] {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   border-radius: var(--radius-md);
   border: 1px solid var(--border);
   flex-shrink: 0;
@@ -792,7 +792,7 @@ input[readonly] {
 }
 
 .stat-value {
-  font-size: 1.75rem;
+  font-size: 1.35rem;
   font-weight: 800;
   letter-spacing: -0.03em;
   color: var(--foreground);
@@ -803,7 +803,7 @@ input[readonly] {
   font-size: 0.875rem;
   font-weight: 700;
   color: var(--foreground);
-  margin-top: 0.25rem;
+  margin-top: 0;
 }
 
 .stat-desc {
@@ -847,7 +847,7 @@ input[readonly] {
 
 .setup-steps-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.85rem;
   margin-top: 1.25rem;
   padding-top: 1.25rem;
@@ -1263,5 +1263,121 @@ tbody tr:last-child td {
   .toast-container {
     bottom: 1rem;
     right: 1rem;
+  }
+}
+/* Layout refinements
+ *
+ * The activity log is longer than any page should be, so it scrolls inside
+ * its panel with the header pinned, and the two live panels share a row on
+ * desks that have the width for it.
+ */
+.panels-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.table-scroll {
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.table-scroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: var(--surface);
+  box-shadow: inset 0 -1px 0 var(--border);
+}
+
+.cell-clamp {
+  max-width: 22rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Compact stat cards: the count and its label sit on one line. */
+.stat-line {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* The header card names the library it is showing. */
+.header-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.library-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+/* Banner rows and the pairing note. */
+.text-danger { color: var(--destructive); }
+
+.alert-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.alert-actions {
+  display: inline-flex;
+  gap: 0.5rem;
+}
+
+/* The nav must never overflow: the brand ellipsizes, the actions stay put. */
+.nav-brand { min-width: 0; }
+
+.brand-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nav-actions { flex-shrink: 0; }
+
+.server-status-pill,
+.theme-toggle-btn {
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  /* Actions collapse to their icons; the labels stay for screen readers. */
+  .status-label,
+  .theme-toggle-label,
+  .btn-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .server-status-pill,
+  .theme-toggle-btn {
+    padding: 0.4rem 0.55rem;
+  }
+
+  .setup-steps-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cell-clamp {
+    max-width: 12rem;
   }
 }

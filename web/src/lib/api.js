@@ -46,6 +46,18 @@ export function formatTime(unixSeconds) {
   return new Date(unixSeconds * 1000).toLocaleString();
 }
 
+// Date without the time of day, for the header card.
+export function formatDate(unixSeconds) {
+  if (!unixSeconds) return '—';
+  return new Date(unixSeconds * 1000).toLocaleDateString();
+}
+
+// Machine-readable timestamp for <time datetime>.
+export function isoTime(unixSeconds) {
+  if (!unixSeconds) return '';
+  return new Date(unixSeconds * 1000).toISOString();
+}
+
 export function relativeTime(unixSeconds) {
   if (!unixSeconds) return 'never';
   const seconds = Math.max(0, Math.floor(Date.now() / 1000 - unixSeconds));
