@@ -4,7 +4,21 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<title>Kioku Sync</title>
-		<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23d94f4f'/%3E%3Ctext x='16' y='22' font-size='18' text-anchor='middle' fill='white' font-family='serif' font-weight='bold'%3E記%3C/text%3E%3C/svg%3E" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<meta name="theme-color" content="#fafafc" media="(prefers-color-scheme: light)" />
+		<meta name="theme-color" content="#0e0c12" media="(prefers-color-scheme: dark)" />
+		<link rel="preload" href="/fonts/plus-jakarta-sans-latin.woff2" as="font" type="font/woff2" crossorigin="anonymous" />
+		<link rel="preload" href="/fonts/jetbrains-mono-latin.woff2" as="font" type="font/woff2" crossorigin="anonymous" />
+		<script>
+			// Set the stored theme before first paint so the page never flashes
+			// the wrong colors; "system" leaves the media query in charge.
+			try {
+				var theme = localStorage.getItem('kioku-sync-theme');
+				if (theme === 'light' || theme === 'dark') {
+					document.documentElement.setAttribute('data-theme', theme);
+				}
+			} catch (e) {}
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

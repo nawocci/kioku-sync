@@ -34,6 +34,13 @@ export async function fetchEvents(key) {
   return call('/api/v1/events?limit=100', key);
 }
 
+// Liveness and protocol version; no key required.
+export async function fetchHealth() {
+  const response = await fetch('/healthz');
+  if (!response.ok) throw new Error(`Request failed (${response.status}).`);
+  return response.json();
+}
+
 export function formatTime(unixSeconds) {
   if (!unixSeconds) return '—';
   return new Date(unixSeconds * 1000).toLocaleString();
