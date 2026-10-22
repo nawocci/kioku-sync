@@ -1,0 +1,10 @@
+services:
+  kioku-sync:
+    build: .
+    image: ghcr.io/nawocci/kioku-sync:latest
+    container_name: kioku-sync
+    restart: unless-stopped
+    ports:
+      - "8756:8756"
+    volumes:
+      - ./data:/data
