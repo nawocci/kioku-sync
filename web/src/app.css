@@ -101,7 +101,7 @@
 
     --foreground: #faf8fc;
     --foreground-secondary: #a29cb0;
-    --foreground-muted: #716a80;
+    --foreground-muted: #8b8496;
 
     --border: #262133;
     --border-subtle: #1d1827;
@@ -135,7 +135,7 @@ html[data-theme="dark"],
 
   --foreground: #faf8fc;
   --foreground-secondary: #a29cb0;
-  --foreground-muted: #716a80;
+  --foreground-muted: #8b8496;
 
   --border: #262133;
   --border-subtle: #1d1827;
@@ -1379,5 +1379,16 @@ tbody tr:last-child td {
 
   .cell-clamp {
     max-width: 12rem;
+  }
+}
+/* Motion is decoration: with reduced motion requested, the dashboard is
+ * simply there, fully visible, instead of animating in from opacity 0. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
   }
 }

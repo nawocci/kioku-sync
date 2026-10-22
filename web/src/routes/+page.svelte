@@ -13,6 +13,7 @@
     formatDate,
     formatTime,
     relativeTime,
+    isoTime,
     lag,
   } from '$lib/api.js';
   import { ICONS } from '$lib/icons.js';
@@ -328,7 +329,7 @@
               <div class="alert-banner alert-error">{error}</div>
             {/if}
 
-            <button type="submit" class="btn btn-primary btn-block" disabled={checking}>
+            <button type="submit" class="btn btn-primary btn-block" disabled={checking} aria-busy={checking}>
               {#if checking}<span class="btn-spinner"></span>{/if}
               <span>{checking ? 'Checking…' : 'Log in to dashboard'}</span>
             </button>
@@ -337,7 +338,7 @@
       </section>
     {:else if !library}
       <section class="view-panel center-panel">
-        <div class="spinner-large"></div>
+        <div class="spinner-large" role="status" aria-label="Loading the library"></div>
         <p class="text-muted mt-4 font-mono text-sm">Connecting to sync server…</p>
         {#if error}
           <div class="alert-banner alert-error mt-4 alert-row">
@@ -373,7 +374,7 @@
               </button>
             </div>
             <div class="account-date-meta font-mono" title={formatTime(library.created_at)}>
-              Created: {formatDate(library.created_at)}
+              Created: <time datetime={isoTime(library.created_at)}>{formatDate(library.created_at)}</time>
             </div>
           </div>
           <div class="header-side-actions">
@@ -494,7 +495,7 @@
                 {#if pairingQr}
                   <img src={pairingQr} alt="Pairing QR code" width="180" height="180" />
                 {:else}
-                  <div class="spinner-large"></div>
+                  <div class="spinner-large" role="status" aria-label="Rendering the pairing code"></div>
                 {/if}
               </div>
               {#if pairingError}
@@ -611,7 +612,7 @@
     </div>
   </footer>
 
-  <div class="toast-container">
+  <div class="toast-container" role="status" aria-live="polite">
     {#each toasts as t (t.id)}
       <div class="toast toast-{t.type}">
         <span class="toast-icon toast-icon-{t.type}">
