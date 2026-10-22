@@ -1,0 +1,291 @@
+:root {
+  --bg: #10141a;
+  --surface: #1a2029;
+  --surface-raised: #222a35;
+  --border: #2c3644;
+  --text: #e6ebf2;
+  --text-dim: #8b96a5;
+  --accent: #d94f4f;
+  --accent-soft: rgba(217, 79, 79, 0.14);
+  --ok: #4fc38a;
+  --warn: #d9a94f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 32px 20px 64px;
+}
+
+h1 {
+  font-size: 22px;
+  font-weight: 650;
+  margin: 0;
+}
+
+h2 {
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  margin: 0 0 12px;
+}
+
+a {
+  color: var(--accent);
+}
+
+button {
+  font: inherit;
+  border: 1px solid var(--border);
+  background: var(--surface-raised);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: var(--accent);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+input {
+  font: inherit;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 10px 12px;
+  width: 100%;
+}
+
+input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.card .label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+}
+
+.card .value {
+  font-size: 26px;
+  font-weight: 650;
+  margin-top: 4px;
+}
+
+.card .sub {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 24px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-dim);
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+td {
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+.pill {
+  display: inline-block;
+  border-radius: 999px;
+  font-size: 12px;
+  padding: 1px 10px;
+  border: 1px solid var(--border);
+}
+
+.pill.online {
+  color: var(--ok);
+  border-color: var(--ok);
+  background: rgba(79, 195, 138, 0.08);
+}
+
+.pill.offline {
+  color: var(--text-dim);
+}
+
+.feed {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.feed li {
+  display: flex;
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.feed li:last-child {
+  border-bottom: none;
+}
+
+.feed .seq {
+  color: var(--text-dim);
+  min-width: 56px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.feed .type {
+  min-width: 130px;
+  color: var(--accent);
+}
+
+.feed .when {
+  margin-left: auto;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.error {
+  color: var(--warn);
+  margin: 8px 0;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28px;
+}
+
+header .brand {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+header .brand small {
+  color: var(--text-dim);
+}
+
+.stack {
+  display: grid;
+  gap: 10px;
+}
+
+.login-box {
+  max-width: 420px;
+  margin: 12vh auto 0;
+}
+
+.login-box .card {
+  display: grid;
+  gap: 12px;
+}
+
+.empty {
+  color: var(--text-dim);
+  padding: 16px 0;
+  text-align: center;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.text-dim {
+  color: var(--text-dim);
+}
+
+.error.banner {
+  margin: 0 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pair-panel {
+  padding: 20px;
+}
+
+.pair-body {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.pair-qr {
+  background: #fff;
+  border-radius: 12px;
+  padding: 8px;
+  line-height: 0;
+}
+
+.pair-qr img {
+  width: 220px;
+  height: 220px;
+}
+
+.pair-text {
+  flex: 1;
+  min-width: 240px;
+}
