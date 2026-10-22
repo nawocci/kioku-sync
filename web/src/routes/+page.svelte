@@ -418,6 +418,12 @@
           {/each}
         </div>
 
+        {#if library.records.length === 0 && library.devices === 0}
+          <p class="text-secondary text-sm">
+            Nothing has synced yet — pair a device with the key below and it will fill in.
+          </p>
+        {/if}
+
         <div class="dashboard-section motion-fade-up motion-delay-1">
           <div class="section-header">
             <h3>Quick setup (Kioku)</h3>
