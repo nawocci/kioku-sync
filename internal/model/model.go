@@ -79,6 +79,53 @@ func TypeOf(ch *pb.Change) RecordType {
 	}
 }
 
+// Validate reports whether a change is well formed: it must carry a record key
+// and a clock, its key kind must match the state it carries, and a tombstone
+// must carry no state. The server refuses malformed changes at the session
+// edge so a buggy or hostile client cannot store a state under a key that does
+// not describe it.
+func Validate(ch *pb.Change) error {
+	if ch.GetKey() == nil || ch.GetModified() == nil {
+		return fmt.Errorf("change without key or clock")
+	}
+	typ := TypeOf(ch)
+	if typ == 0 {
+		return fmt.Errorf("unknown record key kind")
+	}
+	if ch.GetTombstone() {
+		if ch.GetState() != nil {
+			return fmt.Errorf("tombstone carries a state")
+		}
+		return nil
+	}
+	matches := false
+	switch ch.GetState().(type) {
+	case *pb.Change_Manga:
+		matches = typ == Manga
+	case *pb.Change_Chapter:
+		matches = typ == Chapter
+	case *pb.Change_History:
+		matches = typ == History
+	case *pb.Change_Category:
+		matches = typ == Category
+	case *pb.Change_Track:
+		matches = typ == Track
+	case *pb.Change_Preference:
+		// One state message serves both preference key kinds.
+		matches = typ == Preference || typ == SourcePreference
+	case *pb.Change_ExtensionStore:
+		matches = typ == ExtensionStore
+	case *pb.Change_SourceName:
+		matches = typ == SourceName
+	default:
+		return fmt.Errorf("%s change carries no state and is not a tombstone", typ)
+	}
+	if !matches {
+		return fmt.Errorf("%s change carries a mismatched state", typ)
+	}
+	return nil
+}
+
 // CanonKey returns the canonical encoded bytes of a key message. The encoding
 // is deterministic, so all devices and the server agree on record identity.
 func CanonKey(key *pb.RecordKey) []byte {

@@ -18,6 +18,7 @@ import (
 
 	"github.com/nawocci/kioku-sync/internal/engine"
 	"github.com/nawocci/kioku-sync/internal/keys"
+	"github.com/nawocci/kioku-sync/internal/model"
 	pb "github.com/nawocci/kioku-sync/internal/pb"
 	"github.com/nawocci/kioku-sync/internal/store"
 )
@@ -414,15 +415,30 @@ func (s *Server) runSession(ctx context.Context, conn *websocket.Conn, sess *ses
 	}
 }
 
+// maxChangesPerBatch bounds the work one inbound frame can ask for. The client
+// sends 500-row batches; anything far beyond that is an abuse signal and ends
+// the session rather than being applied.
+const maxChangesPerBatch = 2000
+
 func (s *Server) applyBatch(sess *session, batch *pb.ChangeBatch) error {
+	if n := len(batch.GetChanges()); n > maxChangesPerBatch {
+		return fmt.Errorf("batch of %d changes exceeds the %d limit", n, maxChangesPerBatch)
+	}
+
 	ack := &pb.Ack{}
 	var events []*pb.CommittedChange
 
 	for _, ch := range batch.GetChanges() {
-		if ch.GetKey() == nil || ch.GetModified() == nil {
-			// A change without identity or time is malformed; refusing it
-			// keeps the ack honest instead of acknowledging a drop.
-			return fmt.Errorf("change without key or clock")
+		if err := model.Validate(ch); err != nil {
+			// One malformed change must not tear down a session whose other
+			// changes are fine: answer it as not applied and carry on.
+			log.Printf("session %s: refusing malformed change: %v", sess.deviceID, err)
+			ack.Items = append(ack.Items, &pb.Ack_Item{
+				Key:      ch.GetKey(),
+				Modified: ch.GetModified(),
+				Applied:  false,
+			})
+			continue
 		}
 		res, err := s.engine.Apply(sess.library, ch)
 		if err != nil {
@@ -518,20 +534,25 @@ func (s *Server) leave(sess *session) {
 }
 
 // fanout delivers committed events to every live session of the library
-// except the sender.
+// except the sender. The recipient set is copied under the lock and the sends
+// happen outside it, so one slow device can never stall another library.
 func (s *Server) fanout(sender *session, events []*pb.CommittedChange) {
 	blob := mustFrame(&pb.Frame{Body: &pb.Frame_Events{Events: &pb.Events{Events: events}}})
 
 	s.mu.Lock()
-	defer s.mu.Unlock()
+	recipients := make([]*session, 0, len(s.hubs[sender.library]))
 	for sess := range s.hubs[sender.library] {
-		if sess == sender {
-			continue
+		if sess != sender {
+			recipients = append(recipients, sess)
 		}
+	}
+	s.mu.Unlock()
+
+	for _, sess := range recipients {
 		if !sess.send(blob) {
-			// A dead or stuck session is dropped; it will reconnect and
-			// catch up from its stored position.
-			go func(drop *session) { drop.shutdown() }(sess)
+			// A dead or stuck session is dropped; it reconnects and catches up
+			// from its stored position.
+			sess.shutdown()
 		}
 	}
 }

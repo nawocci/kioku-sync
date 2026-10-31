@@ -43,3 +43,41 @@ func TestTypeOfRejectsUnknownKeys(t *testing.T) {
 		t.Fatalf("empty key classified as %d, want 0", got)
 	}
 }
+
+func TestValidateAcceptsOnlyMatchingStates(t *testing.T) {
+	key := &pb.RecordKey{Kind: &pb.RecordKey_Manga{Manga: &pb.MangaKey{SourceId: 1, Url: "a"}}}
+	sourceKey := &pb.RecordKey{Kind: &pb.RecordKey_SourcePreference{
+		SourcePreference: &pb.SourcePrefKey{Source: "s", Pref: "p"},
+	}}
+	clock := &pb.Hlc{WallMs: 1, Device: "d"}
+	manga := &pb.Change_Manga{Manga: &pb.MangaState{Title: "t"}}
+	chapter := &pb.Change_Chapter{Chapter: &pb.ChapterState{Name: "c"}}
+	pref := &pb.Change_Preference{Preference: &pb.PrefValue{}}
+
+	cases := []struct {
+		name string
+		ch   *pb.Change
+	}{
+		{"matching state", &pb.Change{Key: key, Modified: clock, State: manga}},
+		{"tombstone without state", &pb.Change{Key: key, Modified: clock, Tombstone: true}},
+		{"preference state on a source preference key", &pb.Change{Key: sourceKey, Modified: clock, State: pref}},
+		{"state that does not match the key", &pb.Change{Key: key, Modified: clock, State: chapter}},
+		{"missing clock", &pb.Change{Key: key, State: manga}},
+		{"missing key", &pb.Change{Modified: clock, State: manga}},
+		{"empty key", &pb.Change{Key: &pb.RecordKey{}, Modified: clock, State: manga}},
+		{"tombstone carrying a state", &pb.Change{Key: key, Modified: clock, Tombstone: true, State: manga}},
+		{"neither state nor tombstone", &pb.Change{Key: key, Modified: clock}},
+	}
+
+	wantValid := map[string]bool{
+		"matching state":                             true,
+		"tombstone without state":                    true,
+		"preference state on a source preference key": true,
+	}
+	for _, c := range cases {
+		err := Validate(c.ch)
+		if valid := err == nil; valid != wantValid[c.name] {
+			t.Errorf("%s: valid = %v (err %v), want %v", c.name, valid, err, wantValid[c.name])
+		}
+	}
+}

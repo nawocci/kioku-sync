@@ -169,6 +169,46 @@ func TestLiveFanoutBetweenDevices(t *testing.T) {
 	}
 }
 
+// A malformed change must not end the session or discard the rest of its
+// batch: it is answered as not applied, and the batch carries on.
+func TestMalformedChangeIsRejectedWithoutEndingTheSession(t *testing.T) {
+	_, httpServer, key := newTestServer(t)
+
+	a := dial(t, httpServer, key, "phone", 0)
+	a.drain(isHelloResp)
+	a.drain(isSnapshot)
+
+	malformed := &pb.Change{
+		Key:      mangaChange("bad", 1).GetKey(),
+		Modified: &pb.Hlc{WallMs: 10, Device: "d1"},
+		// A manga key carrying a chapter state would poison the record.
+		State: &pb.Change_Chapter{Chapter: &pb.ChapterState{Name: "wrong"}},
+	}
+	good := mangaChange("m1", 11)
+
+	a.send(&pb.Frame{Body: &pb.Frame_ChangeBatch{ChangeBatch: &pb.ChangeBatch{
+		Changes: []*pb.Change{malformed, good},
+	}}})
+	ack := a.drain(isAck).GetAck()
+	if len(ack.GetItems()) != 2 {
+		t.Fatalf("ack carries %d items, want one per change", len(ack.GetItems()))
+	}
+	if ack.GetItems()[0].GetApplied() {
+		t.Fatal("the malformed change was acknowledged as applied")
+	}
+	if !ack.GetItems()[1].GetApplied() {
+		t.Fatal("the valid change in the same batch was dropped with it")
+	}
+
+	// The session is still usable.
+	a.send(&pb.Frame{Body: &pb.Frame_ChangeBatch{ChangeBatch: &pb.ChangeBatch{
+		Changes: []*pb.Change{mangaChange("m2", 12)},
+	}}})
+	if n := len(a.drain(isAck).GetAck().GetItems()); n != 1 {
+		t.Fatalf("a later batch was answered with %d items, want 1", n)
+	}
+}
+
 func TestResumeFromLastSeq(t *testing.T) {
 	_, httpServer, key := newTestServer(t)
 
