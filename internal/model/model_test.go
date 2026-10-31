@@ -51,7 +51,7 @@ func TestValidateAcceptsOnlyMatchingStates(t *testing.T) {
 	}}
 	clock := &pb.Hlc{WallMs: 1, Device: "d"}
 	manga := &pb.Change_Manga{Manga: &pb.MangaState{Title: "t"}}
-	chapter := &pb.Change_Chapter{Chapter: &pb.ChapterState{Name: "c"}}
+	chapter := &pb.Change_Chapter{Chapter: &pb.ChapterState{Read: true}}
 	pref := &pb.Change_Preference{Preference: &pb.PrefValue{}}
 
 	cases := []struct {
@@ -70,8 +70,8 @@ func TestValidateAcceptsOnlyMatchingStates(t *testing.T) {
 	}
 
 	wantValid := map[string]bool{
-		"matching state":                             true,
-		"tombstone without state":                    true,
+		"matching state":                              true,
+		"tombstone without state":                     true,
 		"preference state on a source preference key": true,
 	}
 	for _, c := range cases {

@@ -149,10 +149,6 @@ func Summarize(ch *pb.Change) string {
 		if title := st.Manga.GetTitle(); title != "" {
 			return "manga " + title
 		}
-	case *pb.Change_Chapter:
-		if name := st.Chapter.GetName(); name != "" {
-			return "chapter " + name
-		}
 	case *pb.Change_Category:
 		if name := st.Category.GetName(); name != "" {
 			return "category " + name

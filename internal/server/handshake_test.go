@@ -2,12 +2,15 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/coder/websocket"
+
+	"github.com/nawocci/kioku-sync/internal/keys"
 	pb "github.com/nawocci/kioku-sync/internal/pb"
 )
 
@@ -20,8 +23,10 @@ func TestVersionHandshakeIsEnforced(t *testing.T) {
 	defer cancel()
 
 	for name, headers := range map[string]http.Header{
-		"missing header":  authHeader(key),
-		"wrong version":   versionedHeader(key, "2"),
+		"missing header": authHeader(key),
+		// A version that is never current, so this stays a wrong version when
+		// ProtocolVersion moves.
+		"wrong version":   versionedHeader(key, "0"),
 		"garbage version": versionedHeader(key, "banana"),
 		"empty version":   versionedHeader(key, ""),
 	} {
@@ -60,6 +65,53 @@ func TestHandshakeResponseNamesTheProtocolVersion(t *testing.T) {
 	defer conn.CloseNow()
 	if res == nil || res.Header.Get(protocolHeader) != ProtocolVersion {
 		t.Fatalf("handshake response does not name protocol version %q", ProtocolVersion)
+	}
+}
+
+// A library larger than one page arrives as several snapshot pages, the hello
+// already knows how many records they will carry, and only the final page is
+// marked as last.
+func TestSnapshotArrivesInPages(t *testing.T) {
+	srv, httpServer, key := newTestServer(t)
+	library, _, err := keys.Lookup(srv.store.DB(), key)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	total := snapshotPageSize + 25
+	for i := range total {
+		change := mangaChange(fmt.Sprintf("m%d", i), int64(i+1))
+		if _, err := srv.engine.Apply(library, change); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	device := dial(t, httpServer, key, "phone", 0)
+	hello := device.drain(isHelloResp).GetHelloResponse()
+	if hello.GetSnapshotRecords() != int64(total) {
+		t.Fatalf("hello offers %d snapshot records, want %d", hello.GetSnapshotRecords(), total)
+	}
+
+	pages, records := 0, 0
+	for {
+		page := device.drain(isSnapshot).GetSnapshotResponse()
+		pages++
+		records += len(page.GetRecords())
+		if page.GetLatestSeq() != int64(total) {
+			t.Fatalf("page %d carries position %d, want %d", pages, page.GetLatestSeq(), total)
+		}
+		if page.GetLast() {
+			break
+		}
+		if pages > 10 {
+			t.Fatal("snapshot never ended")
+		}
+	}
+	if pages < 2 {
+		t.Fatalf("snapshot arrived in %d page(s), want it paged", pages)
+	}
+	if records != total {
+		t.Fatalf("snapshot carried %d records over %d pages, want %d", records, pages, total)
 	}
 }
 

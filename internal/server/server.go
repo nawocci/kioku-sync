@@ -26,7 +26,7 @@ import (
 // ProtocolVersion is the sync protocol this server speaks. It is advertised
 // on every WebSocket handshake and must match the client exactly; see
 // PROTOCOL.md for when it changes.
-const ProtocolVersion = "1"
+const ProtocolVersion = "2"
 
 const protocolHeader = "X-Kioku-Sync-Protocol"
 
@@ -319,6 +319,17 @@ func (s *Server) runSession(ctx context.Context, conn *websocket.Conn, sess *ses
 	}
 	snapshotRequired := req.GetLastSeq() < oldest-1 || req.GetLastSeq() <= 0
 
+	// A device pairing into a non-empty library asks about the merge before
+	// anything is transferred, so the size travels with the hello rather than
+	// with the snapshot.
+	var snapshotRecords int64
+	if snapshotRequired {
+		snapshotRecords, err = s.store.RecordCount(sess.library)
+		if err != nil {
+			return err
+		}
+	}
+
 	if err := s.store.TouchDevice(sess.library, sess.deviceID, req.GetDeviceName(), req.GetAppVersion(), req.GetLastSeq(), now); err != nil {
 		return err
 	}
@@ -328,6 +339,7 @@ func (s *Server) runSession(ctx context.Context, conn *websocket.Conn, sess *ses
 			LibraryLabel:     label,
 			ServerTimeMs:     time.Now().UnixMilli(),
 			SnapshotRequired: snapshotRequired,
+			SnapshotRecords:  snapshotRecords,
 		},
 	}}); err != nil {
 		return err
@@ -463,20 +475,43 @@ func (s *Server) applyBatch(sess *session, batch *pb.ChangeBatch) error {
 	return nil
 }
 
-// streamSnapshot sends the full current state of the library and returns the
-// sequence number it was taken at.
+// snapshotPageSize bounds how many records one snapshot frame carries, so a
+// large library neither has to fit in a single frame nor in memory at once.
+const snapshotPageSize = 500
+
+// streamSnapshot sends the full current state of the library, page by page,
+// and returns the sequence number it was taken at.
 func (s *Server) streamSnapshot(ctx context.Context, conn *websocket.Conn, sess *session) (int64, error) {
-	records, latest, err := s.store.Snapshot(sess.library)
+	// The position is read before any record: a commit that lands while the
+	// snapshot streams stays ahead of it, so the device replays it from the log
+	// instead of skipping it.
+	latest, err := s.store.LatestSeq(sess.library)
 	if err != nil {
 		return 0, err
 	}
-	resp := &pb.Frame{Body: &pb.Frame_SnapshotResponse{
-		SnapshotResponse: &pb.SnapshotResponse{Records: records, LatestSeq: latest},
-	}}
-	if err := writeFrame(ctx, conn, resp); err != nil {
-		return 0, err
+
+	var after store.SnapshotCursor
+	for {
+		records, cursor, err := s.store.SnapshotPage(sess.library, after, snapshotPageSize)
+		if err != nil {
+			return 0, err
+		}
+		last := len(records) < snapshotPageSize
+		frame := &pb.Frame{Body: &pb.Frame_SnapshotResponse{
+			SnapshotResponse: &pb.SnapshotResponse{
+				Records:   records,
+				LatestSeq: latest,
+				Last:      last,
+			},
+		}}
+		if err := writeFrame(ctx, conn, frame); err != nil {
+			return 0, err
+		}
+		if last {
+			return latest, nil
+		}
+		after = cursor
 	}
-	return latest, nil
 }
 
 // streamLog sends the committed changes after lastSeq, in order, and returns

@@ -182,7 +182,7 @@ func TestMalformedChangeIsRejectedWithoutEndingTheSession(t *testing.T) {
 		Key:      mangaChange("bad", 1).GetKey(),
 		Modified: &pb.Hlc{WallMs: 10, Device: "d1"},
 		// A manga key carrying a chapter state would poison the record.
-		State: &pb.Change_Chapter{Chapter: &pb.ChapterState{Name: "wrong"}},
+		State: &pb.Change_Chapter{Chapter: &pb.ChapterState{Read: true}},
 	}
 	good := mangaChange("m1", 11)
 

@@ -202,66 +202,109 @@ func (s *Store) CommitRecord(library int64, key []byte, typ int, payload []byte,
 	return seq, true, tx.Commit()
 }
 
-// Snapshot returns the current state of every record of a library, including
-// tombstones, together with the log position it corresponds to.
-//
-// The position is read before the records and in the same read transaction. A
-// commit that lands while the snapshot is being read is therefore still ahead
-// of the returned position, so the client replays it from the log. Reading the
-// position after the records, outside a transaction, would move the client's
-// position past a change the snapshot never contained, and that change would be
-// lost for the device.
-func (s *Store) Snapshot(library int64) ([]*pb.Change, int64, error) {
-	tx, err := s.db.Begin()
-	if err != nil {
-		return nil, 0, err
-	}
-	defer tx.Rollback() //nolint:errcheck // read-only
-
-	var latest int64
-	err = tx.QueryRow(`SELECT last_seq FROM libraries WHERE id = ?`, library).Scan(&latest)
+// LatestSeq returns the newest committed sequence number of a library.
+func (s *Store) LatestSeq(library int64) (int64, error) {
+	var seq int64
+	err := s.db.QueryRow(`SELECT last_seq FROM libraries WHERE id = ?`, library).Scan(&seq)
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, 0, ErrUnknownLibrary
+		return 0, ErrUnknownLibrary
 	}
-	if err != nil {
-		return nil, 0, err
-	}
+	return seq, err
+}
 
-	rows, err := tx.Query(
-		`SELECT payload, hlc_wall, hlc_counter, hlc_device, tombstone FROM records
-		 WHERE library_id = ? ORDER BY type, key`, library,
+// RecordCount counts the records of a library, tombstones included.
+func (s *Store) RecordCount(library int64) (int64, error) {
+	var count int64
+	err := s.db.QueryRow(`SELECT count(*) FROM records WHERE library_id = ?`, library).Scan(&count)
+	return count, err
+}
+
+// snapshotChunk bounds how many records one internal snapshot query reads.
+const snapshotChunk = 1000
+
+// SnapshotCursor is the position of a record in a library's snapshot order.
+// The zero value starts at the first record.
+type SnapshotCursor struct {
+	Type int
+	Key  []byte
+}
+
+// SnapshotPage returns up to limit records of a library after the cursor,
+// ordered by type then key, together with the cursor to continue from. The
+// snapshot is paged so a large library never has to fit in one frame or in
+// the server's memory at once.
+func (s *Store) SnapshotPage(library int64, after SnapshotCursor, limit int) ([]*pb.Change, SnapshotCursor, error) {
+	key := after.Key
+	if key == nil {
+		key = []byte{}
+	}
+	rows, err := s.db.Query(
+		`SELECT type, key, payload, hlc_wall, hlc_counter, hlc_device, tombstone
+		 FROM records
+		 WHERE library_id = ? AND (type > ? OR (type = ? AND key > ?))
+		 ORDER BY type, key
+		 LIMIT ?`,
+		library, after.Type, after.Type, key, limit,
 	)
 	if err != nil {
-		return nil, 0, err
+		return nil, after, err
 	}
 	defer rows.Close()
 
-	var changes []*pb.Change
+	cursor := after
+	changes := make([]*pb.Change, 0, limit)
 	for rows.Next() {
-		var payload []byte
+		var typ int
+		var recordKey, payload []byte
 		var wall int64
 		var counter uint32
 		var device string
 		var tombstone bool
-		if err := rows.Scan(&payload, &wall, &counter, &device, &tombstone); err != nil {
-			return nil, 0, err
+		if err := rows.Scan(&typ, &recordKey, &payload, &wall, &counter, &device, &tombstone); err != nil {
+			return nil, after, err
 		}
+		cursor = SnapshotCursor{Type: typ, Key: recordKey}
+
 		ch := &pb.Change{
 			Modified:  &pb.Hlc{WallMs: wall, Counter: counter, Device: device},
 			Tombstone: tombstone,
 		}
 		if len(payload) > 0 {
 			if err := proto.Unmarshal(payload, ch); err != nil {
-				return nil, 0, fmt.Errorf("decode record payload: %w", err)
+				return nil, after, fmt.Errorf("decode record payload: %w", err)
 			}
 		}
 		changes = append(changes, ch)
 	}
-	if err := rows.Err(); err != nil {
+	return changes, cursor, rows.Err()
+}
+
+// Snapshot returns the current state of every record of a library, including
+// tombstones, together with the log position it corresponds to.
+//
+// The position is read before the records, so a commit that lands while the
+// snapshot is being read stays ahead of the returned position and the client
+// replays it from the log. Reading the position last would move the client's
+// position past a change the snapshot never contained, and that change would be
+// lost for the device.
+func (s *Store) Snapshot(library int64) ([]*pb.Change, int64, error) {
+	latest, err := s.LatestSeq(library)
+	if err != nil {
 		return nil, 0, err
 	}
-
-	return changes, latest, nil
+	var changes []*pb.Change
+	var after SnapshotCursor
+	for {
+		page, cursor, err := s.SnapshotPage(library, after, snapshotChunk)
+		if err != nil {
+			return nil, 0, err
+		}
+		changes = append(changes, page...)
+		if len(page) < snapshotChunk {
+			return changes, latest, nil
+		}
+		after = cursor
+	}
 }
 
 // OldestEventSeq returns the lowest retained sequence number of a library's
