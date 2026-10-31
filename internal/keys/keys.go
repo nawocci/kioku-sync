@@ -6,7 +6,6 @@ package keys
 import (
 	"crypto/rand"
 	"crypto/sha256"
-	"crypto/subtle"
 	"database/sql"
 	"encoding/base64"
 	"errors"
@@ -33,11 +32,6 @@ func Generate() (string, error) {
 func Hash(secret string) string {
 	sum := sha256.Sum256([]byte(secret))
 	return base64.RawURLEncoding.EncodeToString(sum[:])
-}
-
-// ConstantTimeEquals compares two stored hashes without leaking timing.
-func ConstantTimeEquals(a, b string) bool {
-	return subtle.ConstantTimeCompare([]byte(a), []byte(b)) == 1
 }
 
 // CreateKey creates a new library and returns its API key. An empty label
