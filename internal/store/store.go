@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/nawocci/kioku-sync/internal/model"
 	pb "github.com/nawocci/kioku-sync/internal/pb"
 	"google.golang.org/protobuf/proto"
 	_ "modernc.org/sqlite"
@@ -144,10 +145,10 @@ func (s *Store) Record(library int64, key []byte) (*Record, error) {
 // The record is only written when hlc is strictly newer than the stored
 // clock, so concurrent commits can never let an older value overwrite a
 // newer one; a change that loses the race leaves no record, event, or
-// sequence number behind. change is the full committed Change message for
-// the event log; summary is its display label.
+// sequence number behind. payload is the full committed Change message, stored
+// once and replayed from the event log; summary is its display label.
 func (s *Store) CommitRecord(library int64, key []byte, typ int, payload []byte,
-	hlc *pb.Hlc, tombstone bool, change []byte, summary string, at int64,
+	hlc *pb.Hlc, tombstone bool, summary string, at int64,
 ) (seq int64, committed bool, err error) {
 	tx, err := s.db.Begin()
 	if err != nil {
@@ -194,7 +195,7 @@ func (s *Store) CommitRecord(library int64, key []byte, typ int, payload []byte,
 	if _, err := tx.Exec(
 		`INSERT INTO events (library_id, seq, type, key, change, summary, at)
 		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		library, seq, typ, key, change, summary, at,
+		library, seq, typ, key, payload, summary, at,
 	); err != nil {
 		return 0, false, err
 	}
@@ -202,9 +203,31 @@ func (s *Store) CommitRecord(library int64, key []byte, typ int, payload []byte,
 }
 
 // Snapshot returns the current state of every record of a library, including
-// tombstones.
+// tombstones, together with the log position it corresponds to.
+//
+// The position is read before the records and in the same read transaction. A
+// commit that lands while the snapshot is being read is therefore still ahead
+// of the returned position, so the client replays it from the log. Reading the
+// position after the records, outside a transaction, would move the client's
+// position past a change the snapshot never contained, and that change would be
+// lost for the device.
 func (s *Store) Snapshot(library int64) ([]*pb.Change, int64, error) {
-	rows, err := s.db.Query(
+	tx, err := s.db.Begin()
+	if err != nil {
+		return nil, 0, err
+	}
+	defer tx.Rollback() //nolint:errcheck // read-only
+
+	var latest int64
+	err = tx.QueryRow(`SELECT last_seq FROM libraries WHERE id = ?`, library).Scan(&latest)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, 0, ErrUnknownLibrary
+	}
+	if err != nil {
+		return nil, 0, err
+	}
+
+	rows, err := tx.Query(
 		`SELECT payload, hlc_wall, hlc_counter, hlc_device, tombstone FROM records
 		 WHERE library_id = ? ORDER BY type, key`, library,
 	)
@@ -238,12 +261,7 @@ func (s *Store) Snapshot(library int64) ([]*pb.Change, int64, error) {
 		return nil, 0, err
 	}
 
-	var latest int64
-	err = s.db.QueryRow(`SELECT last_seq FROM libraries WHERE id = ?`, library).Scan(&latest)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, 0, ErrUnknownLibrary
-	}
-	return changes, latest, err
+	return changes, latest, nil
 }
 
 // OldestEventSeq returns the lowest retained sequence number of a library's
@@ -357,7 +375,7 @@ func (s *Store) Counts(library int64) ([]Counts, error) {
 			return nil, err
 		}
 		counts = append(counts, Counts{
-			Type:      typeName(typ),
+			Type:      model.RecordType(typ).String(),
 			Count:     count,
 			Tombstone: tombstones,
 		})
@@ -391,7 +409,7 @@ func (s *Store) RecentEvents(library int64, limit int) ([]EventSummary, error) {
 		if err := rows.Scan(&e.Seq, &typ, &e.Summary, &e.At); err != nil {
 			return nil, err
 		}
-		e.Type = typeName(typ)
+		e.Type = model.RecordType(typ).String()
 		events = append(events, e)
 	}
 	return events, rows.Err()
@@ -421,15 +439,4 @@ func (s *Store) LibraryInfo(library int64) (LibraryInfo, error) {
 func (s *Store) PruneEvents(cutoff int64) error {
 	_, err := s.db.Exec(`DELETE FROM events WHERE at < ?`, cutoff)
 	return err
-}
-
-func typeName(typ int) string {
-	names := map[int]string{
-		1: "manga", 2: "chapter", 3: "history", 4: "category", 5: "track",
-		6: "preference", 7: "source_preference", 8: "extension_store", 9: "source_name",
-	}
-	if name, ok := names[typ]; ok {
-		return name
-	}
-	return "unknown"
 }

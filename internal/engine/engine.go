@@ -63,6 +63,9 @@ func (e *Engine) Apply(library int64, in *pb.Change) (Result, error) {
 		return Result{Applied: false}, nil
 
 	case cmp == 0:
+		// The library already holds this exact clock, which only a retried
+		// push produces. It is accepted as applied: no event is needed, since
+		// every device has either seen this value or a newer one.
 		return Result{Applied: true}, nil
 
 	default:
@@ -91,7 +94,7 @@ func (e *Engine) commit(library int64, key []byte, typ model.RecordType, ch *pb.
 	}
 
 	seq, committed, err := e.store.CommitRecord(
-		library, key, int(typ), blob, ch.GetModified(), ch.GetTombstone(), blob,
+		library, key, int(typ), blob, ch.GetModified(), ch.GetTombstone(),
 		model.Summarize(ch), at,
 	)
 	if err != nil {

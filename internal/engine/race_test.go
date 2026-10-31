@@ -119,7 +119,7 @@ func TestLosingCommitSpendsNothing(t *testing.T) {
 	}})
 	_, committed, err := st.CommitRecord(
 		lib, key, int(model.Manga), []byte("older"), &pb.Hlc{WallMs: 1, Device: "d1"},
-		false, []byte("older"), "older", 0,
+		false, "older", 0,
 	)
 	if err != nil {
 		t.Fatal(err)
