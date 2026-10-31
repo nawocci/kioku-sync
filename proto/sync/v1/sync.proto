@@ -1,5 +1,8 @@
 syntax = "proto3";
 
+// This file is mirrored as sync/src/main/proto/sync.proto in the app; the two
+// must stay identical apart from the language option. PROTOCOL.md is the
+// contract they implement.
 package kioku.sync.v1;
 
 option go_package = "github.com/nawocci/kioku-sync/internal/pb;pb";

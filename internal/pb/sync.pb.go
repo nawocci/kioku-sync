@@ -4,6 +4,10 @@
 // 	protoc        v6.32.1
 // source: sync/v1/sync.proto
 
+// This file is mirrored as sync/src/main/proto/sync.proto in the app; the two
+// must stay identical apart from the language option. PROTOCOL.md is the
+// contract they implement.
+
 package pb
 
 import (
